@@ -1,0 +1,11 @@
+.vscode
+*.code-workspace
+
+*.csv
+
+__pycache__
+.ipynb_checkpoints
+*.ipynb
+
+# Data related
+data
