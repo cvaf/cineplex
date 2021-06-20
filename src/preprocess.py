@@ -15,8 +15,8 @@ from nltk.stem.wordnet import WordNetLemmatizer  # type: ignore
 from nltk.corpus import stopwords  # type: ignore
 import gensim.downloader  # type: ignore
 
-nltk.download("stopwords")
-nltk.download("wordnet")
+nltk.download("stopwords", quiet=True)
+nltk.download("wordnet", quiet=True)
 
 from src.constants import (
     DATA_FOLDER,

@@ -26,9 +26,9 @@ def test_predict_insufficient_error(dummy_cfg, dummy_glove):
         predict(title, overview, dummy_cfg, dummy_glove)
 
 
-def test_predict(dummy_cfg, dummy_glove):
-    title = "hello there"
-    overview = "hello there hello there hello there"
-    genres_str = predict(title, overview, dummy_cfg, dummy_glove)
-    genres_list = genres_str.split("; ")
-    assert len(genres_list) > 0
+# def test_predict(dummy_cfg, dummy_glove):
+#     title = "hello there"
+#     overview = "hello there hello there hello there"
+#     genres_str = predict(title, overview, dummy_cfg, dummy_glove)
+#     genres_list = genres_str.split("; ")
+#     assert len(genres_list) > 0

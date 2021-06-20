@@ -5,10 +5,10 @@ class Config:
     def __init__(
         self,
         num_epochs: int = 100,
-        learning_rate: float = 1.0,
+        learning_rate: float = 0.1,
         gamma: float = 0.7,
-        decision_threshold: float = 0.25,
-        layer_sizes: list = [512, 256, 128],
+        decision_threshold: float = 0.1,
+        layer_sizes: list = [256, 128, 64],
         batch_size: int = 64,
         seed: int = 42,
         preload: bool = True,

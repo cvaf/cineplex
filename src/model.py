@@ -132,8 +132,8 @@ class Trainer:
 
     def test(self, test_loader: DataLoader) -> None:
         self.model.eval()
-        self.test_loss = torch.zeros_like(torch.empty(1))
         device = next(self.model.parameters()).device
+        self.test_loss = torch.zeros_like(torch.empty(1)).to(device)
         with torch.no_grad():
             preds, targs = [], []
             for data, target in test_loader:
@@ -145,7 +145,8 @@ class Trainer:
 
         self.test_loss /= float(len(test_loader.dataset))  # type: ignore
         accuracy = hamming_score(np.array(targs), np.array(preds))
-        print(f"Average loss: {self.test_loss:.4f}, Accuracy score: {accuracy:.0f}%\n")
+        loss_str = str(round(self.test_loss.cpu().numpy()[0], 3))
+        print(f"Average loss: {loss_str}, Accuracy score: {accuracy:.0f}%\n")
 
     def save_checkpoint(self) -> None:
         torch.save(

@@ -4,6 +4,7 @@ setup:
 	poetry run python -c 'import nltk; nltk.download("stopwords"); nltk.download("wordnet")'
 	poetry run python -c 'import gensim.downloader; glove = gensim.downloader.load("glove-wiki-gigaword-100")'
 	unzip data/raw/movies_metadata.csv.zip -d data/raw
+	poetry run pre-commit install
 
 clean-pyc:
 	find . -name '*.pyc' -exec rm -f {} +
@@ -24,3 +25,7 @@ mypy:
 	poetry run mypy src
 
 check: test mypy
+
+
+train:
+	poetry run python movie_classifier.py --train

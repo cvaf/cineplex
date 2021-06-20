@@ -1,3 +1,5 @@
+import os
+from src.constants import MODEL_FOLDER
 import click
 import src
 
@@ -25,9 +27,15 @@ def run(
         src.preprocess()
 
     if train:
+        if not all([f"{file}.npy" in os.listdir(src.DATA_FOLDER) for file in ["X", "y"]]):
+            src.preprocess()
         src.train(config)
 
     if title and description:
+        if "model.pt" not in os.listdir(MODEL_FOLDER):
+            raise click.exceptions.BadParameter(
+                "You must train a model before using the classifier."
+            )
         genres = src.predict(title, description, config)
         print(f" Title: {title}\n Description: {description}\n Genre(s): {genres}")
 

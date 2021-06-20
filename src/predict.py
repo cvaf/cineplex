@@ -1,6 +1,6 @@
 import gensim.downloader  # type: ignore
 from click.exceptions import BadParameter
-from gensim.models.keyedvectors import KeyedVectors
+from gensim.models.keyedvectors import KeyedVectors  # type: ignore
 
 from .config import Config
 from .model import Trainer
