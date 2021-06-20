@@ -1,14 +1,19 @@
 import gensim.downloader  # type: ignore
 from click.exceptions import BadParameter
+from gensim.models.keyedvectors import KeyedVectors
 
 from .config import Config
 from .model import Trainer
 from .preprocess import transform_single, target_decode
 
 
-def predict(title: str, description: str, config: Config) -> str:
+def predict(
+    title: str,
+    description: str,
+    config: Config,
+    glove: KeyedVectors = gensim.downloader.load("glove-wiki-gigaword-100"),
+) -> str:
     trainer = Trainer(*config.model_params())
-    glove = gensim.downloader.load("glove-wiki-gigaword-100")
 
     X, missing_embeddings = transform_single(title, description, glove)
 

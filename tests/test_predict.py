@@ -1,7 +1,10 @@
+import pytest
+import numpy as np
+from click.exceptions import BadParameter
+
 from src.predict import predict
 from src.config import Config
-import pytest
-from click.exceptions import BadParameter
+from src.constants import WORD_EMBEDDING_SHAPE
 
 
 @pytest.fixture
@@ -9,15 +12,23 @@ def dummy_cfg():
     return Config()
 
 
-def test_predict_insufficient_error(dummy_cfg):
+@pytest.fixture
+def dummy_glove():
+    return {
+        "there": np.random.rand(*WORD_EMBEDDING_SHAPE).astype("f"),
+        "hello": np.random.rand(*WORD_EMBEDDING_SHAPE).astype("f"),
+    }
+
+
+def test_predict_insufficient_error(dummy_cfg, dummy_glove):
     title, overview = "arstarst", "tora na dume"
     with pytest.raises(BadParameter):
-        predict(title, overview, dummy_cfg)
+        predict(title, overview, dummy_cfg, dummy_glove)
 
 
-def test_predict(dummy_cfg):
-    title = "no country for old men"
-    overview = "Violence and mayhem ensue after a hunter stumbles upon a drug deal gone wrong and more than two million dollars in cash near the Rio Grande."
-    genres_str = predict(title, overview, dummy_cfg)
+def test_predict(dummy_cfg, dummy_glove):
+    title = "hello there"
+    overview = "hello there hello there hello there"
+    genres_str = predict(title, overview, dummy_cfg, dummy_glove)
     genres_list = genres_str.split("; ")
     assert len(genres_list) > 0

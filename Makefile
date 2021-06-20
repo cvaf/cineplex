@@ -3,6 +3,7 @@ setup:
 	poetry install
 	poetry run python -c 'import nltk; nltk.download("stopwords"); nltk.download("wordnet")'
 	poetry run python -c 'import gensim.downloader; glove = gensim.downloader.load("glove-wiki-gigaword-100")'
+	unzip data/raw/movies_metadata.csv.zip -d data/raw
 
 clean-pyc:
 	find . -name '*.pyc' -exec rm -f {} +
