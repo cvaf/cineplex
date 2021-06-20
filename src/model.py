@@ -74,7 +74,9 @@ class Trainer:
         torch.manual_seed(seed)
 
         self.model = Network(input_size, layer_sizes, output_size)
-        self.model.to(torch.device("cuda"))
+
+        if torch.cuda.is_available():
+            self.model.to(torch.device("cuda"))
 
         if "cuda" not in str(next(self.model.parameters()).device):
             print("You are not training on the GPU.\n")
