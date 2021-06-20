@@ -41,12 +41,14 @@ class Network(torch.nn.Module):
         input_size: int,
         layer_sizes: list,
         output_size: int,
+        device: torch.device,
     ) -> None:
         super(Network, self).__init__()
 
         self.model = torch.nn.DataParallel(
             mlp(input_size=input_size, layer_sizes=layer_sizes, output_size=output_size)
         )
+        self.model.to(device)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
@@ -73,13 +75,11 @@ class Trainer:
         np.random.seed(seed)
         torch.manual_seed(seed)
 
-        self.model = Network(input_size, layer_sizes, output_size)
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # self.device = torch.device("cpu")
 
-        if torch.cuda.is_available():
-            self.model.to(torch.device("cuda"))
-
-        if "cuda" not in str(next(self.model.parameters()).device):
-            print("You are not training on the GPU.\n")
+        self.model = Network(input_size, layer_sizes, output_size, self.device)
+        self.model.to(self.device)
 
         self.optimizer = torch.optim.Adam(
             self.model.parameters(),
@@ -104,9 +104,8 @@ class Trainer:
         return torch.nn.functional.binary_cross_entropy(prediction, target)
 
     def fit(self, train_loader: DataLoader) -> None:
-        device = next(self.model.parameters()).device
         for batch_idx, (data, target) in enumerate(train_loader):
-            data, target = data.to(device).float(), target.to(device).float()
+            data, target = data.to(self.device).float(), target.to(self.device).float()
             self.optimizer.zero_grad()
             prediction = self.model(data)
             loss = self.loss_function(prediction, target)
@@ -134,12 +133,14 @@ class Trainer:
 
     def test(self, test_loader: DataLoader) -> None:
         self.model.eval()
-        device = next(self.model.parameters()).device
-        self.test_loss = torch.zeros_like(torch.empty(1)).to(device)
+        self.test_loss = torch.zeros_like(torch.empty(1)).to(self.device)
         with torch.no_grad():
             preds, targs = [], []
             for data, target in test_loader:
-                data, target = data.to(device).float(), target.to(device).float()
+                data, target = (
+                    data.to(self.device).float(),
+                    target.to(self.device).float(),
+                )
                 output = self.model(data)
                 self.test_loss += self.loss_function(output, target)
                 preds.append(np.where(output.cpu() > self.decision_threshold, 1.0, 0.0))
@@ -165,7 +166,7 @@ class Trainer:
         if not os.path.exists(self.model_path):
             raise FileNotFoundError("no pre-trained model found in the models folder")
 
-        checkpoint = torch.load(self.model_path)
+        checkpoint = torch.load(self.model_path, map_location=self.device)
         self.model.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.epoch = checkpoint["epoch"]
@@ -175,7 +176,7 @@ class Trainer:
         self.model.eval()
         with torch.no_grad():
             x = np.array([x]) if x.ndim == 1 else x
-            output = self.model(torch.from_numpy(x))
+            output = self.model(torch.from_numpy(x).to(self.device))
             return np.where(output.cpu() > self.decision_threshold, 1.0, 0.0)[0]
 
 
