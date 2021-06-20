@@ -75,7 +75,8 @@ class Trainer:
         np.random.seed(seed)
         torch.manual_seed(seed)
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        dev = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(dev)
         # self.device = torch.device("cpu")
 
         self.model = Network(input_size, layer_sizes, output_size, self.device)
