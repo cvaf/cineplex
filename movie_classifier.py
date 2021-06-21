@@ -9,7 +9,7 @@ import src
     "--preprocess", is_flag=True, default=False, help="run pre-processing script"
 )
 @click.option("--train", is_flag=True, default=False, help="train the model")
-@click.option("--preload", is_flag=True, default=False, help="preload a trained model")
+@click.option("--preload", is_flag=True, default=True, help="preload a trained model")
 @click.option("--title", type=str, default=None, help="movie title to predict")
 @click.option("--description", type=str, default=None, help="movie overview to predict")
 def run(
