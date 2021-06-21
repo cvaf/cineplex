@@ -4,6 +4,7 @@ import os
 PARENT_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir)
 DATA_FOLDER = os.path.join(PARENT_FOLDER, "data")
 MODEL_FOLDER = os.path.join(PARENT_FOLDER, "models")
+RESULTS_FOLDER = os.path.join(PARENT_FOLDER, "results")
 
 BASE_COLUMNS = ["title", "overview", "genres"]
 

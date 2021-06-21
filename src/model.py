@@ -7,8 +7,10 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import StepLR
+from torch.utils.tensorboard import SummaryWriter
 from sklearn.model_selection import train_test_split  # type: ignore
 from typing import Any
+from copy import deepcopy
 
 from src.config import Config
 from src.constants import DATA_FOLDER, MODEL_FOLDER
@@ -29,7 +31,7 @@ def mlp(
         layers += [
             torch.nn.Linear(layer_sizes[i], layer_sizes[i + 1]),
             activation(),
-            torch.nn.BatchNorm1d(layer_sizes[i + 1]),
+            # torch.nn.BatchNorm1d(layer_sizes[i + 1]),
         ]
     layers += [torch.nn.Linear(layer_sizes[-1], output_size), output_activation(dim=1)]
     return torch.nn.Sequential(*layers)
@@ -63,7 +65,9 @@ class Trainer:
         num_epochs: int,
         learning_rate: float,
         gamma: float,
+        decay_step_size: int,
         decision_threshold: float,
+        results_path: str,
         seed: int = 42,
         preload: bool = True,
     ) -> None:
@@ -71,6 +75,11 @@ class Trainer:
         self.epoch = 1
         self.num_epochs = num_epochs
         self.decision_threshold = decision_threshold
+        self.results_path = results_path
+        self.layer_sizes = layer_sizes
+        self.gamma = gamma
+        self.decay_step_size = decay_step_size
+        self.lr_init = learning_rate
 
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -89,8 +98,8 @@ class Trainer:
 
         self.scheduler = StepLR(
             self.optimizer,
-            step_size=1,
-            gamma=gamma,
+            step_size=self.decay_step_size,
+            gamma=self.gamma,
         )
 
         self.model_path = os.path.join(MODEL_FOLDER, "model.pt")
@@ -99,17 +108,28 @@ class Trainer:
 
         self.model.train()
 
+    def _hyperparameters(self):
+        return {
+            "layer_sizes": self.layer_sizes,
+            "gamma": self.gamma,
+            "decay_step_size": self.decay_step_size,
+            "lr_init": self.lr_init,
+            "decision_threshold": self.decision_threshold,
+        }
+
     def loss_function(
         self, prediction: torch.Tensor, target: torch.Tensor
     ) -> torch.Tensor:
         return torch.nn.functional.binary_cross_entropy(prediction, target)
 
-    def fit(self, train_loader: DataLoader) -> None:
+    def fit(self, train_loader: DataLoader) -> float:
+        total_loss = torch.zeros_like(torch.empty(1)).to(self.device)
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(self.device).float(), target.to(self.device).float()
             self.optimizer.zero_grad()
             prediction = self.model(data)
             loss = self.loss_function(prediction, target)
+            total_loss += loss
             loss.backward()
             self.optimizer.step()
 
@@ -123,16 +143,42 @@ class Trainer:
                         loss.item(),
                     )
                 )
+        return (total_loss / float(len(train_loader.dataset))).item()  # type: ignore
 
     def train(self, train_loader: DataLoader, test_loader: DataLoader) -> None:
+        writer = SummaryWriter(self.results_path)
+        print(
+            "\nTraining...\nhttp://localhost:6006/ (poetry run tensorboard --logdir ./results) \n"
+        )
+
+        hyperparams = [
+            f"| {key} | {value} |" for key, value in self._hyperparameters().items()
+        ]
+        writer.add_text(
+            "Hyperparameters",
+            "| Parameter | Value |\n|-------|-------|\n" + "\n".join(hyperparams),
+        )
+
+        writer.add_text(
+            "Model summary",
+            deepcopy(str(self.model).replace("\n", " \n\n")),
+        )
+
         while self.epoch < self.num_epochs:
-            self.fit(train_loader)
-            self.test(test_loader)
+            train_loss = self.fit(train_loader)
+            test_loss, test_accuracy = self.test(test_loader)
             self.save_checkpoint()
-            self.epoch += 1
             self.scheduler.step()
 
-    def test(self, test_loader: DataLoader) -> None:
+            writer.add_scalar("1.Loss/1.Training loss", train_loss, self.epoch)
+            writer.add_scalar("1.Loss/2.Test loss", test_loss, self.epoch)
+            writer.add_scalar("1.Loss/3.Test accuracy", test_accuracy, self.epoch)
+            learning_rate = self.scheduler.get_last_lr()[0]
+            writer.add_scalar("2.Parameters/1.Learning rate", learning_rate, self.epoch)
+
+            self.epoch += 1
+
+    def test(self, test_loader: DataLoader) -> tuple:
         self.model.eval()
         self.test_loss = torch.zeros_like(torch.empty(1)).to(self.device)
         with torch.no_grad():
@@ -151,6 +197,7 @@ class Trainer:
         accuracy = hamming_score(np.array(targs), np.array(preds))
         loss_str = str(round(self.test_loss.cpu().numpy()[0], 3))
         print(f"Average loss: {loss_str}, Accuracy score: {accuracy:.0f}%\n")
+        return self.test_loss.item(), accuracy
 
     def save_checkpoint(self) -> None:
         torch.save(
