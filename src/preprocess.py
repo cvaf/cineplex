@@ -90,16 +90,7 @@ def sentence_to_embeddings(
                 pass
     if not embeddings:
         return np.array([]), True
-    return (
-        np.array(
-            [
-                np.mean(embeddings, axis=0),
-                np.sum(embeddings, axis=0),
-                np.max(embeddings, axis=0),
-            ]
-        ),
-        False,
-    )
+    return np.mean(embeddings, axis=0), False
 
 
 def transform_single(

@@ -21,7 +21,6 @@ def mlp(
     input_size: Any,
     layer_sizes: list,
     output_size: int,
-    output_activation=torch.nn.Softmax,
     activation=torch.nn.LeakyReLU,
 ) -> torch.nn.Sequential:
     input_size = input_size[0] if isinstance(input_size, tuple) else input_size
@@ -31,9 +30,9 @@ def mlp(
         layers += [
             torch.nn.Linear(layer_sizes[i], layer_sizes[i + 1]),
             activation(),
-            # torch.nn.BatchNorm1d(layer_sizes[i + 1]),
+            torch.nn.BatchNorm1d(layer_sizes[i + 1]),
         ]
-    layers += [torch.nn.Linear(layer_sizes[-1], output_size), output_activation(dim=1)]
+    layers += [torch.nn.Linear(layer_sizes[-1], output_size)]
     return torch.nn.Sequential(*layers)
 
 
@@ -80,6 +79,7 @@ class Trainer:
         self.gamma = gamma
         self.decay_step_size = decay_step_size
         self.lr_init = learning_rate
+        self.weights = None
 
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -120,7 +120,12 @@ class Trainer:
     def loss_function(
         self, prediction: torch.Tensor, target: torch.Tensor
     ) -> torch.Tensor:
-        return torch.nn.functional.binary_cross_entropy(prediction, target)
+        if self.weights is None:
+            loss = torch.nn.BCEWithLogitsLoss()
+        else:
+            loss = torch.nn.BCEWithLogitsLoss(weight=self.weights)
+        return loss(prediction, target)
+        # return torch.nn.functional.binary_cross_entropy(prediction, target, weight=self.weights)
 
     def fit(self, train_loader: DataLoader) -> float:
         total_loss = torch.zeros_like(torch.empty(1)).to(self.device)
@@ -190,13 +195,15 @@ class Trainer:
                 )
                 output = self.model(data)
                 self.test_loss += self.loss_function(output, target)
-                preds.append(np.where(output.cpu() > self.decision_threshold, 1.0, 0.0))
+                preds.append(
+                    np.where(np.exp(output.cpu()) > self.decision_threshold, 1.0, 0.0)
+                )
                 targs.append(target.cpu())
 
         self.test_loss /= float(len(test_loader.dataset))  # type: ignore
-        accuracy = hamming_score(np.array(targs), np.array(preds))
+        accuracy = hamming_score(np.concatenate(targs), np.concatenate(preds))
         loss_str = str(round(self.test_loss.cpu().numpy()[0], 3))
-        print(f"Average loss: {loss_str}, Accuracy score: {accuracy:.0f}%\n")
+        print(f"Average loss: {loss_str}, Accuracy score: {accuracy*100:.0f}%\n")
         return self.test_loss.item(), accuracy
 
     def save_checkpoint(self) -> None:
@@ -225,7 +232,12 @@ class Trainer:
         with torch.no_grad():
             x = np.array([x]) if x.ndim == 1 else x
             output = self.model(torch.from_numpy(x).to(self.device))
-            return np.where(output.cpu() > self.decision_threshold, 1.0, 0.0)[0]
+            return np.where(np.exp(output.cpu()) > self.decision_threshold, 1.0, 0.0)[0]
+
+    def set_weights(self, y: np.ndarray) -> None:
+        weights = 1.0 / np.power(np.sum(y, axis=0), 1)
+        weights = weights / np.sum(weights) * len(y[0])
+        self.weights = torch.from_numpy(weights).to(self.device)  # type: ignore
 
 
 def load_data(directory: str = DATA_FOLDER) -> tuple:
@@ -243,6 +255,8 @@ def load_data(directory: str = DATA_FOLDER) -> tuple:
 def train(config: Config) -> None:
     trainer = Trainer(*config.model_params())
     X, y = load_data()
+
+    trainer.set_weights(y)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=config.seed)
     train_dataloader = DataLoader(
