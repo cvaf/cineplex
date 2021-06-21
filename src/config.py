@@ -1,5 +1,5 @@
 import os
-from .constants import SENTENCE_EMBEDDING_SHAPE, KEPT_GENRES, RESULTS_FOLDER
+from .constants import WORD_EMBEDDING_SHAPE, KEPT_GENRES, RESULTS_FOLDER
 from datetime import datetime
 
 
@@ -10,7 +10,7 @@ class Config:
         learning_rate: float = 0.1,
         gamma: float = 0.7,
         decay_step_size: int = 1,
-        decision_threshold: float = 0.1,
+        decision_threshold: float = 0.2,
         layer_sizes: list = [512, 256, 128],
         batch_size: int = 64,
         seed: int = 42,
@@ -32,7 +32,7 @@ class Config:
         self.decay_step_size = decay_step_size
         self.decision_threshold = decision_threshold
         self.layer_sizes = layer_sizes
-        self.input_size = SENTENCE_EMBEDDING_SHAPE[0] * SENTENCE_EMBEDDING_SHAPE[1] * 2
+        self.input_size = WORD_EMBEDDING_SHAPE[0] * 2
         self.output_size = len(KEPT_GENRES)
 
     def model_params(self):

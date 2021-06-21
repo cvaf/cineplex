@@ -11,7 +11,6 @@ from src.preprocess import (
 from src.constants import (
     DATA_FOLDER,
     KEPT_GENRES,
-    SENTENCE_EMBEDDING_SHAPE,
     WORD_EMBEDDING_SHAPE,
 )
 import os
@@ -81,8 +80,8 @@ def test_text_clean():
 def test_sentence_to_embeddings(dummy_glove):
     data = [
         ("arstarst fhiaoien", (0,)),
-        ("hello there", SENTENCE_EMBEDDING_SHAPE),
-        ("arstarst hello", SENTENCE_EMBEDDING_SHAPE),
+        ("hello there", WORD_EMBEDDING_SHAPE),
+        ("arstarst hello", WORD_EMBEDDING_SHAPE),
     ]
 
     for input, output_shape in data:
@@ -98,7 +97,7 @@ def test_sentence_to_embeddings(dummy_glove):
 
 
 def test_transform_single(dummy_glove):
-    input_size = SENTENCE_EMBEDDING_SHAPE[0] * SENTENCE_EMBEDDING_SHAPE[1] * 2
+    input_size = WORD_EMBEDDING_SHAPE[0] * 2
     data = [
         (("Hello there", "ARStARST hello there hello there"), ((input_size,), False)),
         (("Hello there", "ArstarTAR stARSTARST"), ((input_size // 2,), True)),
